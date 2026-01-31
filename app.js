@@ -1,32 +1,42 @@
-// Daily Briefing Dashboard - Interactive JavaScript
-// CONFIGURE THIS FOR YOUR GITHUB REPO
+// Daily Briefing Dashboard - Enhanced JavaScript
+
+// Configuration
 const CONFIG = {
-    githubRepo: 'YOUR_USERNAME/daily-briefing-dashboard',  // Change this!
-    githubBranch: 'main',
+    githubRepo: 'thornclawdbot/daily-briefing-dashboard',
+    githubBranch: 'master',
     dataPath: 'data',
-    useLocalFiles: false  // Set to true for local, false for GitHub Pages
+    useLocalFiles: false,
+    quotes: [
+        { text: "The only way to do great work is to love what you do.", author: "Steve Jobs" },
+        { text: "In the middle of difficulty lies opportunity.", author: "Albert Einstein" },
+        { text: "Believe you can and you're halfway there.", author: "Theodore Roosevelt" },
+        { text: "The future belongs to those who believe in the beauty of their dreams.", author: "Eleanor Roosevelt" },
+        { text: "It is during our darkest moments that we must focus to see the light.", author: "Aristotle" },
+        { text: "Do not go where the path may lead, go instead where there is no path and leave a trail.", author: "Ralph Waldo Emerson" },
+        { text: "Be the change you wish to see in the world.", author: "Mahatma Gandhi" },
+        { text: "The only thing necessary for the triumph of evil is for good men to do nothing.", author: "Edmund Burke" },
+        { text: "Yesterday is not ours to recover, but tomorrow is ours to win or lose.", author: " Lyndon B. Johnson" },
+        { text: "The best way to predict the future is to create it.", author: "Peter Drucker" }
+    ]
 };
-
-// GitHub raw URL helper
-function getRawUrl(path) {
-    return `https://raw.githubusercontent.com/${CONFIG.githubRepo}/${CONFIG.githubBranch}/${path}`;
-}
-
-// For local development (when running server.js)
-const LOCAL_BASE = 'http://localhost:3000';
 
 // State
 let state = {
     briefing: null,
     posts: [],
-    tiktok: null
+    tiktok: null,
+    stocks: null,
+    crypto: null
 };
 
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
     setCurrentDate();
     loadAllData();
+    loadNotes();
+    displayRandomQuote();
     startAutoRefresh();
+    loadTheme();
 });
 
 // Set current date
@@ -47,24 +57,14 @@ async function loadAllData() {
                            'July', 'August', 'September', 'October', 'November', 'December'];
         const month = monthNames[today.getMonth()];
         const year = today.getFullYear();
-        const dateStr = today.toISOString().split('T')[0]; // YYYY-MM-DD
+        const dateStr = today.toISOString().split('T')[0];
         const dayName = today.toLocaleDateString('en-US', { weekday: 'long' });
         const shortDate = `${dayName}-${dateStr}`;
 
-        // Load data from appropriate source
-        if (CONFIG.useLocalFiles) {
-            await loadBriefingLocal(month, year, shortDate);
-            await loadSocialPostsLocal(month, year, shortDate);
-            await loadTikTokLocal(month, year, shortDate);
-        } else {
-            await loadBriefing(month, year, shortDate);
-            await loadSocialPosts(month, year, shortDate);
-            await loadTikTok(month, year, shortDate);
-        }
-
-        // Load market data
+        await loadBriefing(month, year, shortDate);
+        await loadSocialPosts(month, year, shortDate);
+        await loadTikTok(month, year, shortDate);
         await loadMarketData();
-
         updateTimestamp();
 
     } catch (error) {
@@ -73,8 +73,12 @@ async function loadAllData() {
     }
 }
 
-// ============ GITHUB PAGES VERSION ============
+// GitHub raw URL helper
+function getRawUrl(path) {
+    return `https://raw.githubusercontent.com/${CONFIG.githubRepo}/${CONFIG.githubBranch}/${path}`;
+}
 
+// Load briefing
 async function loadBriefing(month, year, shortDate) {
     const paths = [
         `${CONFIG.dataPath}/briefings/${month}-${year}/Week-*/${shortDate}.md`,
@@ -98,13 +102,58 @@ async function loadBriefing(month, year, shortDate) {
 
     if (content) {
         parseAndRenderBriefing(content);
-    } else {
-        document.getElementById('briefing-content').innerHTML = `
-            <div class="loading">No briefing available for today. Check back soon!</div>
-        `;
     }
 }
 
+// Parse and render briefing
+function parseAndRenderBriefing(content) {
+    const topics = [];
+    const lines = content.split('\n');
+    let currentTopic = null;
+
+    for (const line of lines) {
+        if (line.startsWith('## ')) {
+            if (currentTopic) topics.push(currentTopic);
+            currentTopic = {
+                title: line.replace('## ', '').trim(),
+                icon: getTopicIcon(line),
+                preview: ''
+            };
+        } else if (line.startsWith('### ') && currentTopic) {
+            currentTopic.preview = line.replace('### ', '').trim();
+        }
+    }
+    if (currentTopic) topics.push(currentTopic);
+
+    const container = document.getElementById('briefing-content');
+    container.innerHTML = topics.length > 0 ? `
+        <div class="briefing-content">
+            ${topics.map(topic => `
+                <div class="briefing-topic">
+                    <div class="topic-icon">${topic.icon}</div>
+                    <div class="topic-title">${topic.title}</div>
+                    <div class="topic-preview">${topic.preview || 'Click to read more'}</div>
+                </div>
+            `).join('')}
+        </div>
+    ` : `<div class="loading">No briefing available for today</div>`;
+}
+
+// Get topic icon
+function getTopicIcon(title) {
+    const icons = {
+        'SPORTS': '🏈', 'TECH': '💻', 'TRAVEL': '✈️', 'FASHION': '👗',
+        'LITERATURE': '📚', 'BOOKS': '📚', 'HEARING': '👂', 'CONTENT': '🎙️',
+        'STOCK': '📈', 'CRYPTO': '🪙', 'NEWS': '📰', 'WEATHER': '🌤️'
+    };
+    
+    for (const [key, icon] of Object.entries(icons)) {
+        if (title.toUpperCase().includes(key)) return icon;
+    }
+    return '📰';
+}
+
+// Load social posts
 async function loadSocialPosts(month, year, shortDate) {
     const paths = [
         `${CONFIG.dataPath}/posts/${month}-${year}/Week-*/${shortDate}.csv`,
@@ -130,6 +179,53 @@ async function loadSocialPosts(month, year, shortDate) {
     renderSocialPosts(posts);
 }
 
+// Parse CSV
+function parseCSV(csv) {
+    const lines = csv.split('\n');
+    const posts = [];
+    
+    for (let i = 1; i < lines.length; i++) {
+        const line = lines[i].trim();
+        if (!line) continue;
+        
+        // Handle quoted values
+        const match = line.match(/^"?([^"]*)"?,[^,]*,[^,]*,"?([^"]*)"?/);
+        if (match) {
+            posts.push({
+                time: match[2]?.trim() || '12:00',
+                text: match[1]?.split(',')[0] || match[1],
+                status: 'draft'
+            });
+        }
+    }
+    
+    return posts;
+}
+
+// Render social posts
+function renderSocialPosts(posts) {
+    const container = document.getElementById('social-content');
+    document.getElementById('post-count').textContent = `${posts.length} posts`;
+    
+    if (posts.length === 0) {
+        container.innerHTML = `<div class="loading">No social posts for today yet. Check back at 6 PM!</div>`;
+        return;
+    }
+
+    container.innerHTML = `
+        <div class="posts-list">
+            ${posts.map(post => `
+                <div class="post-item">
+                    <span class="post-time">${post.time}</span>
+                    <span class="post-text">${post.text.substring(0, 100)}${post.text.length > 100 ? '...' : ''}</span>
+                    <span class="post-status">${post.status}</span>
+                </div>
+            `).join('')}
+        </div>
+    `;
+}
+
+// Load TikTok content
 async function loadTikTok(month, year, shortDate) {
     const paths = [
         `${CONFIG.dataPath}/tiktok/${month}-${year}/Week-*/${shortDate}.md`,
@@ -154,172 +250,7 @@ async function loadTikTok(month, year, shortDate) {
     renderTikTok(content);
 }
 
-// ============ LOCAL VERSION ============
-
-async function loadBriefingLocal(month, year, shortDate) {
-    const paths = [
-        `${LOCAL_BASE}/daily-briefings/${month}-${year}/Week-*/${shortDate}.md`,
-        `${LOCAL_BASE}/daily-briefings/${month}-${year}/${shortDate}.md`
-    ];
-
-    let content = null;
-    for (const url of paths) {
-        try {
-            const response = await fetch(url);
-            if (response.ok) {
-                content = await response.text();
-                break;
-            }
-        } catch (e) {
-            continue;
-        }
-    }
-
-    if (content) {
-        parseAndRenderBriefing(content);
-    } else {
-        document.getElementById('briefing-content').innerHTML = `
-            <div class="loading">No briefing available for today</div>
-        `;
-    }
-}
-
-async function loadSocialPostsLocal(month, year, shortDate) {
-    const paths = [
-        `${LOCAL_BASE}/buffer-posts/${month}-${year}/Week-*/${shortDate}.csv`,
-        `${LOCAL_BASE}/buffer-posts/${month}-${year}/${shortDate}.csv`
-    ];
-
-    let posts = [];
-    for (const url of paths) {
-        try {
-            const response = await fetch(url);
-            if (response.ok) {
-                const csv = await response.text();
-                posts = parseCSV(csv);
-                break;
-            }
-        } catch (e) {
-            continue;
-        }
-    }
-
-    renderSocialPosts(posts);
-}
-
-async function loadTikTokLocal(month, year, shortDate) {
-    const paths = [
-        `${LOCAL_BASE}/tiktok-content/${month}-${year}/Week-*/${shortDate}.md`,
-        `${LOCAL_BASE}/tiktok-content/${month}-${year}/${shortDate}.md`
-    ];
-
-    let content = null;
-    for (const url of paths) {
-        try {
-            const response = await fetch(url);
-            if (response.ok) {
-                content = await response.text();
-                break;
-            }
-        } catch (e) {
-            continue;
-        }
-    }
-
-    renderTikTok(content);
-}
-
-// ============ PARSING & RENDERING ============
-
-function parseCSV(csv) {
-    const lines = csv.split('\n');
-    const posts = [];
-    
-    for (let i = 1; i < lines.length; i++) {
-        const line = lines[i].trim();
-        if (!line) continue;
-        
-        const match = line.match(/^"?([^"]*)"?,[^,]*,[^,]*,"?([^"]*)"?/);
-        if (match) {
-            posts.push({
-                time: match[2]?.trim() || '12:00',
-                text: match[1],
-                status: 'draft'
-            });
-        }
-    }
-    
-    return posts;
-}
-
-function parseAndRenderBriefing(content) {
-    const topics = [];
-    const lines = content.split('\n');
-    let currentTopic = null;
-
-    for (const line of lines) {
-        if (line.startsWith('## ')) {
-            if (currentTopic) topics.push(currentTopic);
-            currentTopic = {
-                title: line.replace('## ', '').trim(),
-                icon: getTopicIcon(line),
-                preview: ''
-            };
-        } else if (line.startsWith('### ') && currentTopic) {
-            currentTopic.preview = line.replace('### ', '').trim();
-        }
-    }
-    if (currentTopic) topics.push(currentTopic);
-
-    const container = document.getElementById('briefing-content');
-    container.innerHTML = `
-        <div class="briefing-content">
-            ${topics.map(topic => `
-                <div class="briefing-topic">
-                    <div class="topic-icon">${topic.icon}</div>
-                    <div class="topic-title">${topic.title}</div>
-                    <div class="topic-preview">${topic.preview || 'Click to read more'}</div>
-                </div>
-            `).join('')}
-        </div>
-    `;
-}
-
-function getTopicIcon(title) {
-    const icons = {
-        'SPORTS': '🏈', 'TECH': '💻', 'TRAVEL': '✈️', 'FASHION': '👗',
-        'LITERATURE': '📚', 'BOOKS': '📚', 'HEARING': '👂', 'CONTENT': '🎙️',
-        'STOCK': '📈', 'CRYPTO': '🪙'
-    };
-    
-    for (const [key, icon] of Object.entries(icons)) {
-        if (title.toUpperCase().includes(key)) return icon;
-    }
-    return '📰';
-}
-
-function renderSocialPosts(posts) {
-    const container = document.getElementById('social-content');
-    document.getElementById('post-count').textContent = `${posts.length} posts`;
-    
-    if (posts.length === 0) {
-        container.innerHTML = `<div class="loading">No social posts for today yet. Check back at 6 PM!</div>`;
-        return;
-    }
-
-    container.innerHTML = `
-        <div class="posts-list">
-            ${posts.map(post => `
-                <div class="post-item">
-                    <span class="post-time">${post.time}</span>
-                    <span class="post-text">${post.text.substring(0, 100)}${post.text.length > 100 ? '...' : ''}</span>
-                    <span class="post-status">${post.status}</span>
-                </div>
-            `).join('')}
-        </div>
-    `;
-}
-
+// Render TikTok content
 function renderTikTok(content) {
     const container = document.getElementById('tiktok-content');
     
@@ -338,42 +269,120 @@ function renderTikTok(content) {
 
     container.innerHTML = `
         <div class="tiktok-content">
-            ${script ? `<div class="tiktok-section"><h4>📝 Script</h4><p>${script.substring(0, 200)}...</p></div>` : ''}
-            ${caption ? `<div class="tiktok-section"><h4>#️⃣ Caption</h4><p>${caption.substring(0, 150)}...</p></div>` : ''}
-            ${prompt ? `<div class="tiktok-section"><h4>📸 Image Prompt</h4><p>${prompt.substring(0, 150)}...</p></div>` : ''}
+            ${script ? `<div class="tiktok-section"><h4>📝 Script</h4><p>${script.substring(0, 200)}${script.length > 200 ? '...' : ''}</p></div>` : ''}
+            ${caption ? `<div class="tiktok-section"><h4>#️⃣ Caption</h4><p>${caption.substring(0, 150)}${caption.length > 150 ? '...' : ''}</p></div>` : ''}
+            ${prompt ? `<div class="tiktok-section"><h4>📸 Image Prompt</h4><p>${prompt.substring(0, 150)}${prompt.length > 150 ? '...' : ''}</p></div>` : ''}
         </div>
     `;
 }
 
-// Market data (placeholder)
+// Load market data
 async function loadMarketData() {
     updateMarketDisplay();
+    updateWeatherDisplay();
 }
 
+// Update market display
 function updateMarketDisplay() {
-    document.getElementById('sp500').textContent = '5,892.63';
-    document.getElementById('sp500-change').textContent = '+0.45%';
-    document.getElementById('sp500-change').className = 'ticker-change positive';
-    
-    document.getElementById('btc-price').textContent = '$92,450';
-    document.getElementById('btc-change').textContent = '+2.3%';
-    document.getElementById('btc-change').className = 'ticker-change positive';
-    
-    document.getElementById('eth-price').textContent = '$3,180';
-    document.getElementById('eth-change').textContent = '+1.8%';
-    document.getElementById('eth-change').className = 'ticker-change positive';
+    // Placeholder data - would be replaced with actual API calls
+    const stocks = [
+        { symbol: 'S&P 500', price: '5,892.63', change: '+0.45%' },
+        { symbol: 'NASDAQ', price: '19,512.84', change: '+0.62%' },
+        { symbol: 'Bitcoin', price: '$92,450', change: '+2.3%' },
+        { symbol: 'Ethereum', price: '$3,180', change: '+1.8%' }
+    ];
+
+    stocks.forEach(stock => {
+        const changeEl = document.getElementById(stock.symbol === 'S&P 500' ? 'sp500-change' : 
+                                                   stock.symbol === 'NASDAQ' ? 'nasdaq-change' :
+                                                   stock.symbol === 'Bitcoin' ? 'btc-change' : 'eth-change');
+        const priceEl = document.getElementById(stock.symbol === 'S&P 500' ? 'sp500' : 
+                                                 stock.symbol === 'NASDAQ' ? 'nasdaq' :
+                                                 stock.symbol === 'Bitcoin' ? 'btc-price' : 'eth-price');
+        
+        if (priceEl) priceEl.textContent = stock.price;
+        if (changeEl) {
+            changeEl.textContent = stock.change;
+            changeEl.className = 'ticker-change ' + (stock.change.startsWith('+') ? 'positive' : 'negative');
+        }
+    });
 }
 
-// Open folder (for local version only)
+// Update weather display
+function updateWeatherDisplay() {
+    const weatherData = {
+        temp: '72°',
+        condition: 'Sunny',
+        humidity: '45%',
+        wind: '8 mph',
+        location: 'Los Angeles'
+    };
+
+    document.getElementById('weather-temp').innerHTML = `${weatherData.temp}<span class="weather-location">${weatherData.location}</span>`;
+    document.getElementById('weather-humidity').textContent = weatherData.humidity;
+    document.getElementById('weather-wind').textContent = weatherData.wind;
+    document.getElementById('weather-condition').textContent = weatherData.condition;
+}
+
+// Display random quote
+function displayRandomQuote() {
+    const quote = CONFIG.quotes[Math.floor(Math.random() * CONFIG.quotes.length)];
+    document.getElementById('daily-quote').textContent = `"${quote.text}"`;
+    document.getElementById('quote-author').textContent = `— ${quote.author}`;
+}
+
+// Theme toggle
+function toggleTheme() {
+    const body = document.body;
+    const currentTheme = body.getAttribute('data-theme');
+    const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+    
+    body.setAttribute('data-theme', newTheme);
+    localStorage.setItem('theme', newTheme);
+    
+    const icon = document.getElementById('theme-icon');
+    icon.className = newTheme === 'light' ? 'fas fa-moon' : 'fas fa-sun';
+}
+
+// Load theme
+function loadTheme() {
+    const savedTheme = localStorage.getItem('theme') || 'dark';
+    document.body.setAttribute('data-theme', savedTheme);
+    const icon = document.getElementById('theme-icon');
+    icon.className = savedTheme === 'light' ? 'fas fa-moon' : 'fas fa-sun';
+}
+
+// Notes functionality
+function loadNotes() {
+    const savedNotes = localStorage.getItem('quickNotes') || '';
+    document.getElementById('quick-notes').value = savedNotes;
+}
+
+function saveNotes() {
+    const notes = document.getElementById('quick-notes').value;
+    localStorage.setItem('quickNotes', notes);
+    alert('Notes saved!');
+}
+
+// Open folder
 function openFolder(folderName) {
-    if (CONFIG.useLocalFiles) {
-        const paths = {
-            'daily-briefings': `${LOCAL_BASE}/daily-briefings`,
-            'buffer-posts': `${LOCAL_BASE}/buffer-posts`,
-            'tiktok-content': `${LOCAL_BASE}/tiktok-content`
-        };
-        if (paths[folderName]) {
-            window.open(paths[folderName]);
+    const paths = {
+        'daily-briefings': 'C:/Users/thorn/OneDrive/Documents/clawdbot/daily-briefings',
+        'buffer-posts': 'C:/Users/thorn/OneDrive/Documents/clawdbot/buffer-posts',
+        'tiktok-content': 'C:/Users/thorn/OneDrive/Documents/clawdbot/tiktok-content',
+        'cold-case-christianity': 'C:/Users/thorn/OneDrive/Documents/clawdbot/cold-case-christianity',
+        'journal': 'C:/Users/thorn/OneDrive/Documents/Journal',
+        'memory': 'C:/Users/thoms/clawd/memory',
+        'daily-briefing-dashboard': 'C:/Users/thorn/OneDrive/Documents/clawdbot/daily-briefing-dashboard'
+    };
+    
+    const path = paths[folderName];
+    if (path) {
+        // Try to open in file explorer
+        const success = window.open(`file://${path}`, '_blank');
+        if (!success || success.closed) {
+            // If popup blocked, show the path
+            alert(`Open this folder:\n${path}`);
         }
     }
 }
@@ -381,6 +390,7 @@ function openFolder(folderName) {
 // Refresh data
 function refreshData() {
     loadAllData();
+    displayRandomQuote();
 }
 
 // Update timestamp
