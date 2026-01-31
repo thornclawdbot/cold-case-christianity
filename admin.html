@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Admin</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        .admin-container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .admin-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px 20px;
+            text-align: center;
+            border-radius: 16px;
+            margin-bottom: 24px;
+        }
+        .admin-header h1 {
+            font-size: 1.5rem;
+            margin-bottom: 8px;
+        }
+        .admin-section {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 16px;
+        }
+        .admin-section h2 {
+            font-size: 1.1rem;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .form-group {
+            margin-bottom: 16px;
+        }
+        .form-group label {
+            display: block;
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            margin-bottom: 6px;
+        }
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            padding: 12px;
+            background: var(--bg-primary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-size: 1rem;
+            font-family: inherit;
+        }
+        .form-group textarea {
+            min-height: 120px;
+            resize: vertical;
+        }
+        .btn {
+            width: 100%;
+            padding: 14px;
+            background: var(--accent);
+            border: none;
+            border-radius: 8px;
+            color: white;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+        .btn:active {
+            opacity: 0.8;
+        }
+        .btn-secondary {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+            margin-top: 8px;
+        }
+        .status {
+            margin-top: 12px;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 0.875rem;
+            display: none;
+        }
+        .status.success {
+            background: rgba(34, 197, 94, 0.2);
+            color: #22c55e;
+            display: block;
+        }
+        .status.error {
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+            display: block;
+        }
+        .quick-links {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+        .quick-link-btn {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            padding: 20px 12px;
+            background: var(--bg-card);
+            border-radius: 12px;
+            text-decoration: none;
+            color: var(--text-primary);
+            font-size: 0.875rem;
+        }
+        .quick-link-btn:hover {
+            background: var(--bg-primary);
+        }
+        .quick-link-btn i {
+            font-size: 1.5rem;
+            color: var(--accent);
+        }
+    </style>
+</head>
+<body>
+    <div class="admin-container">
+        <header class="admin-header">
+            <h1>📝 Dashboard Admin</h1>
+            <p>Add content from your phone</p>
+        </header>
+
+        <div class="quick-links">
+            <a href="index.html" class="quick-link-btn">
+                <i class="fas fa-home"></i>
+                <span>Dashboard</span>
+            </a>
+            <a href="briefings.html" class="quick-link-btn">
+                <i class="fas fa-newspaper"></i>
+                <span>Briefings</span>
+            </a>
+            <a href="posts.html" class="quick-link-btn">
+                <i class="fas fa-pen"></i>
+                <span>Posts</span>
+            </a>
+            <a href="tiktok.html" class="quick-link-btn">
+                <i class="fab fa-tiktok"></i>
+                <span>TikTok</span>
+            </a>
+        </div>
+
+        <!-- Add Briefing -->
+        <section class="admin-section">
+            <h2>📰 Add Briefing</h2>
+            <div class="form-group">
+                <label>Date (YYYY-MM-DD)</label>
+                <input type="date" id="briefing-date">
+            </div>
+            <div class="form-group">
+                <label>Content (Markdown)</label>
+                <textarea id="briefing-content" placeholder="# Today&#39;s Briefing&#10;&#10;## Topic 1&#10;Content here...&#10;&#10;## Topic 2&#10;Content here..."></textarea>
+            </div>
+            <button class="btn" onclick="addBriefing()">Save Briefing</button>
+            <div id="briefing-status" class="status"></div>
+        </section>
+
+        <!-- Add Social Post -->
+        <section class="admin-section">
+            <h2>📱 Add Social Post</h2>
+            <div class="form-group">
+                <label>Date (YYYY-MM-DD)</label>
+                <input type="date" id="post-date">
+            </div>
+            <div class="form-group">
+                <label>Time (HH:MM)</label>
+                <input type="time" id="post-time">
+            </div>
+            <div class="form-group">
+                <label>Post Content</label>
+                <textarea id="post-content" placeholder="Your social media post..."></textarea>
+            </div>
+            <button class="btn" onclick="addPost()">Save Post</button>
+            <div id="post-status" class="status"></div>
+        </section>
+
+        <!-- Add TikTok -->
+        <section class="admin-section">
+            <h2>🎬 Add TikTok Content</h2>
+            <div class="form-group">
+                <label>Date (YYYY-MM-DD)</label>
+                <input type="date" id="tiktok-date">
+            </div>
+            <div class="form-group">
+                <label>Day Name</label>
+                <select id="tiktok-day">
+                    <option value="Monday">Monday</option>
+                    <option value="Tuesday">Tuesday</option>
+                    <option value="Wednesday">Wednesday</option>
+                    <option value="Thursday">Thursday</option>
+                    <option value="Friday">Friday</option>
+                    <option value="Saturday">Saturday</option>
+                    <option value="Sunday">Sunday</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Script</label>
+                <textarea id="tiktok-script" placeholder="### 📝 SCRIPT&#10;&#10;Your video script here..."></textarea>
+            </div>
+            <div class="form-group">
+                <label>Caption</label>
+                <textarea id="tiktok-caption" placeholder="#️⃣ CAPTION&#10;&#10;Your caption here..."></textarea>
+            </div>
+            <button class="btn" onclick="addTikTok()">Save TikTok</button>
+            <div id="tiktok-status" class="status"></div>
+        </section>
+
+        <!-- GitHub Token -->
+        <section class="admin-section">
+            <h2>🔑 GitHub Token</h2>
+            <div class="form-group">
+                <label>Personal Access Token (stored locally)</label>
+                <input type="password" id="github-token" placeholder="ghp_xxxxxxxxxxxx">
+            </div>
+            <button class="btn btn-secondary" onclick="saveToken()">Save Token</button>
+            <div id="token-status" class="status"></div>
+        </section>
+
+        <footer class="footer" style="position: relative; margin-top: 20px;">
+            <p>Changes auto-commit and deploy via Netlify</p>
+        </footer>
+    </div>
+
+    <script>
+        const REPO = 'thornclawdbot/daily-briefing-dashboard';
+        const BRANCH = 'master';
+
+        // Load saved token
+        document.getElementById('github-token').value = localStorage.getItem('gh_token') || '';
+        document.getElementById('briefing-date').valueAsDate = new Date();
+        document.getElementById('post-date').valueAsDate = new Date();
+        document.getElementById('tiktok-date').valueAsDate = new Date();
+
+        function showStatus(id, message, isError = false) {
+            const el = document.getElementById(id);
+            el.textContent = message;
+            el.className = 'status ' + (isError ? 'error' : 'success');
+            setTimeout(() => el.className = 'status', 5000);
+        }
+
+        function saveToken() {
+            const token = document.getElementById('github-token').value.trim();
+            if (!token) {
+                showStatus('token-status', 'Please enter a token', true);
+                return;
+            }
+            localStorage.setItem('gh_token', token);
+            showStatus('token-status', 'Token saved securely!');
+        }
+
+        async function githubRequest(path, method = 'GET', body = null) {
+            const token = localStorage.getItem('gh_token');
+            if (!token) {
+                throw new Error('GitHub token not set. Please add your token above.');
+            }
+
+            const response = await fetch(`https://api.github.com/repos/${REPO}/${path}`, {
+                method,
+                headers: {
+                    'Authorization': `token ${token}`,
+                    'Accept': 'application/vnd.github.v3+json',
+                    'Content-Type': 'application/json'
+                },
+                body: body ? JSON.stringify(body) : null
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.message || 'GitHub API error');
+            }
+
+            return response.json();
+        }
+
+        async function addBriefing() {
+            const date = document.getElementById('briefing-date').value;
+            const content = document.getElementById('briefing-content').value.trim();
+            
+            if (!date || !content) {
+                showStatus('briefing-status', 'Please fill in all fields', true);
+                return;
+            }
+
+            try {
+                const path = `data/briefings/${date}.md`;
+                const dayName = new Date(date).toLocaleDateString('en-US', { weekday: 'long' });
+                const fullContent = `# ${dayName} - ${date}\n\n${content}`;
+
+                // Check if file exists
+                let sha;
+                try {
+                    await githubRequest(`contents/${path}`);
+                    // File exists, get SHA
+                    const existing = await githubRequest(`contents/${path}`);
+                    sha = existing.sha;
+                } catch (e) {
+                    // File doesn't exist, that's fine
+                }
+
+                // Create or update file
+                const body = {
+                    message: `Add briefing for ${date}`,
+                    content: btoa(unescape(encodeURIComponent(fullContent))),
+                    branch: BRANCH
+                };
+
+                if (sha) {
+                    body.sha = sha;
+                    await githubRequest(`contents/${path}`, 'PUT', body);
+                } else {
+                    await githubRequest(`contents/${path}`, 'PUT', body);
+                }
+
+                showStatus('briefing-status', `Briefing saved! Netlify will auto-deploy.`);
+                document.getElementById('briefing-content').value = '';
+            } catch (error) {
+                showStatus('briefing-status', error.message, true);
+            }
+        }
+
+        async function addPost() {
+            const date = document.getElementById('post-date').value;
+            const time = document.getElementById('post-time').value;
+            const content = document.getElementById('post-content').value.trim();
+            
+            if (!date || !time || !content) {
+                showStatus('post-status', 'Please fill in all fields', true);
+                return;
+            }
+
+            try {
+                const path = `data/posts/${date}.csv`;
+                const csvContent = `Content,Scheduled Time,Status\n"${content}",${time},draft`;
+
+                let sha;
+                try {
+                    const existing = await githubRequest(`contents/${path}`);
+                    sha = existing.sha;
+                } catch (e) {}
+
+                const body = {
+                    message: `Add post for ${date}`,
+                    content: btoa(unescape(encodeURIComponent(csvContent))),
+                    branch: BRANCH
+                };
+
+                if (sha) {
+                    body.sha = sha;
+                    await githubRequest(`contents/${path}`, 'PUT', body);
+                } else {
+                    await githubRequest(`contents/${path}`, 'PUT', body);
+                }
+
+                showStatus('post-status', `Post saved! Netlify will auto-deploy.`);
+                document.getElementById('post-content').value = '';
+            } catch (error) {
+                showStatus('post-status', error.message, true);
+            }
+        }
+
+        async function addTikTok() {
+            const date = document.getElementById('tiktok-date').value;
+            const day = document.getElementById('tiktok-day').value;
+            const script = document.getElementById('tiktok-script').value.trim();
+            const caption = document.getElementById('tiktok-caption').value.trim();
+            
+            if (!date || (!script && !caption)) {
+                showStatus('tiktok-status', 'Please fill in date and at least script or caption', true);
+                return;
+            }
+
+            try {
+                const path = `data/tiktok/${date}.md`;
+                const filename = `${day}-${date}.md`;
+                const fullPath = `data/tiktok/${filename}`;
+                
+                let content = '';
+                if (script) content += `### 📝 SCRIPT\n\n${script}\n\n`;
+                if (caption) content += `### #️⃣ CAPTION\n\n${caption}\n`;
+
+                let sha;
+                try {
+                    const existing = await githubRequest(`contents/${fullPath}`);
+                    sha = existing.sha;
+                } catch (e) {}
+
+                const body = {
+                    message: `Add TikTok for ${date}`,
+                    content: btoa(unescape(encodeURIComponent(content))),
+                    branch: BRANCH
+                };
+
+                if (sha) {
+                    body.sha = sha;
+                    await githubRequest(`contents/${fullPath}`, 'PUT', body);
+                } else {
+                    await githubRequest(`contents/${fullPath}`, 'PUT', body);
+                }
+
+                showStatus('tiktok-status', `TikTok saved! Netlify will auto-deploy.`);
+                document.getElementById('tiktok-script').value = '';
+                document.getElementById('tiktok-caption').value = '';
+            } catch (error) {
+                showStatus('tiktok-status', error.message, true);
+            }
+        }
+    </script>
+</body>
+</html>
