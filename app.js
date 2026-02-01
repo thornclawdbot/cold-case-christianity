@@ -1,5 +1,167 @@
 // Daily Briefing Dashboard - Enhanced JavaScript
 
+// Web Search Utility (DuckDuckGo Lite - Free, No API Key)
+const WebSearch = {
+    /**
+     * Search the web - returns web pages
+     */
+    async search(query, maxResults = 5) {
+        const encodedQuery = encodeURIComponent(query);
+        const url = `https://lite.duckduckgo.com/lite/?q=${encodedQuery}`;
+        
+        try {
+            const response = await fetch(url);
+            if (!response.ok) throw new Error(`HTTP error: ${response.status}`);
+            const html = await response.text();
+            return this.parseResults(html, maxResults);
+        } catch (error) {
+            console.error('Web search failed:', error);
+            return [];
+        }
+    },
+    
+    /**
+     * Search for videos - returns YouTube, TikTok, Vimeo links
+     */
+    async searchVideos(query, maxResults = 5) {
+        const encodedQuery = encodeURIComponent(query + " video tutorial");
+        const url = `https://lite.duckduckgo.com/lite/?q=${encodedQuery}`;
+        
+        try {
+            const response = await fetch(url);
+            if (!response.ok) throw new Error(`HTTP error: ${response.status}`);
+            const html = await response.text();
+            const results = this.parseResults(html, maxResults * 2);
+            
+            return results.filter(r => 
+                r.url.includes('youtube.com') ||
+                r.url.includes('youtu.be') ||
+                r.url.includes('tiktok.com') ||
+                r.url.includes('vimeo.com')
+            ).slice(0, maxResults);
+        } catch (error) {
+            console.error('Video search failed:', error);
+            return [];
+        }
+    },
+    
+    /**
+     * Search for images - returns Unsplash/Pexels direct URLs
+     */
+    async searchImages(query, maxResults = 5) {
+        const images = [];
+        
+        images.push({
+            title: `Unsplash: ${query}`,
+            url: `https://unsplash.com/search?q=${encodeURIComponent(query)}`,
+            source: 'Unsplash'
+        });
+        
+        images.push({
+            title: `Pexels: ${query}`,
+            url: `https://www.pexels.com/search/${encodeURIComponent(query)}/`,
+            source: 'Pexels'
+        });
+        
+        images.push({
+            title: `Pixabay: ${query}`,
+            url: `https://pixabay.com/en/images/search/${encodeURIComponent(query)}/`,
+            source: 'Pixabay'
+        });
+        
+        return images;
+    },
+    
+    /**
+     * Search for YouTube tutorials specifically
+     */
+    async searchYouTube(query, maxResults = 5) {
+        const encodedQuery = encodeURIComponent(query + " tutorial");
+        const url = `https://lite.duckduckgo.com/lite/?q=${encodedQuery}`;
+        
+        try {
+            const response = await fetch(url);
+            if (!response.ok) throw new Error(`HTTP error: ${response.status}`);
+            const html = await response.text();
+            const results = this.parseResults(html, maxResults * 3);
+            
+            return results.filter(r => 
+                r.url.includes('youtube.com') ||
+                r.url.includes('youtu.be')
+            ).slice(0, maxResults);
+        } catch (error) {
+            console.error('YouTube search failed:', error);
+            return [];
+        }
+    },
+    
+    parseResults(html, maxResults) {
+        const results = [];
+        const lines = html.split('\n');
+        let currentResult = {};
+        let resultCount = 0;
+        
+        for (const line of lines) {
+            if (line.includes('>URL<') || line.includes('result-link')) {
+                currentResult = {};
+            }
+            
+            const urlMatch = line.match(/href="([^"]+)"/);
+            if (urlMatch && urlMatch[1].startsWith('http')) {
+                currentResult.url = urlMatch[1];
+            }
+            
+            const textMatches = line.match(/>([^<]{5,100})</g);
+            if (textMatches && textMatches.length > 0) {
+                const potentialTitle = textMatches[0].replace(/[><]/g, '').trim();
+                if (potentialTitle.length > 10 && potentialTitle.length < 100 && !currentResult.title) {
+                    currentResult.title = potentialTitle;
+                }
+            }
+            
+            if (currentResult.title && currentResult.url && !currentResult.snippet) {
+                results.push({
+                    title: currentResult.title,
+                    url: currentResult.url,
+                    snippet: currentResult.snippet || ''
+                });
+                resultCount++;
+                if (resultCount >= maxResults) break;
+                currentResult = {};
+            }
+        }
+        
+        return results;
+    },
+    
+    async quickSearch(query, type = 'web') {
+        let results;
+        
+        switch(type) {
+            case 'video': results = await this.searchVideos(query, 5); break;
+            case 'youtube': results = await this.searchYouTube(query, 5); break;
+            case 'image': results = await this.searchImages(query, 5); break;
+            default: results = await this.search(query, 5);
+        }
+        
+        if (results.length === 0) return `No results for: "${query}"`;
+        
+        let output = `🔍 ${type.toUpperCase()} results for "${query}":\n\n`;
+        
+        if (type === 'image') {
+            results.forEach((r, i) => {
+                output += `${i + 1}. ${r.title} (${r.source})\n   ${r.url}\n\n`;
+            });
+        } else {
+            results.forEach((r, i) => {
+                output += `${i + 1}. ${r.title}\n   ${r.url}\n\n`;
+            });
+        }
+        
+        return output;
+    }
+};
+
 // Configuration
 const CONFIG = {
     githubRepo: 'thornclawdbot/daily-briefing-dashboard',
